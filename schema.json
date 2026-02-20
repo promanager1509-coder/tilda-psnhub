@@ -1,0 +1,192 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PSNHUB Commercial Real Estate Unit",
+  "description": "Единый формат для всех объектов коммерческой недвижимости",
+  "type": "object",
+  "required": ["id", "developer", "type", "deal", "price", "area", "city"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Уникальный ID в формате {developer}_{original_id}",
+      "example": "brusnika_2966"
+    },
+    "developer": {
+      "type": "string",
+      "enum": ["pik", "samolet", "lsr", "mrgroup", "fsk", "a101", "brusnika", "donstroy", "ingrad", "other"],
+      "description": "Код застройщика"
+    },
+    "jk": {
+      "type": ["string", "null"],
+      "description": "Название ЖК",
+      "example": "Квартал Герцена"
+    },
+    "type": {
+      "type": "string",
+      "enum": ["psn", "office", "gab_ready", "gab_franchise", "warehouse", "other"],
+      "description": "Тип объекта: ПСН, офис, ГАБ готовый, ГАБ франшиза, склад"
+    },
+    "deal": {
+      "type": "string",
+      "enum": ["sale", "rent"],
+      "description": "Тип сделки: продажа или аренда"
+    },
+    "price": {
+      "type": "number",
+      "description": "Цена объекта (руб)",
+      "minimum": 0
+    },
+    "price_per_month": {
+      "type": ["number", "null"],
+      "description": "Стоимость аренды в месяц (руб)",
+      "minimum": 0
+    },
+    "price_per_sqm": {
+      "type": "number",
+      "description": "Цена за м² (руб)",
+      "minimum": 0
+    },
+    "area": {
+      "type": "number",
+      "description": "Площадь объекта (м²)",
+      "minimum": 0
+    },
+    "floor": {
+      "type": ["integer", "null"],
+      "description": "Этаж",
+      "minimum": 1
+    },
+    "floors_total": {
+      "type": ["integer", "null"],
+      "description": "Этажность здания",
+      "minimum": 1
+    },
+    "city": {
+      "type": "string",
+      "enum": ["moscow", "mo"],
+      "description": "Город: Москва или МО"
+    },
+    "city_name": {
+      "type": "string",
+      "description": "Название города",
+      "example": "Москва, Химки, Мытищи"
+    },
+    "district": {
+      "type": ["string", "null"],
+      "description": "Округ (для Москвы: ЦАО, САО, ЮЗАО, ЗАО, ВАО, СВАО, ЮВАО, СЗАО)",
+      "example": "ЗАО"
+    },
+    "address": {
+      "type": "string",
+      "description": "Полный адрес объекта"
+    },
+    "metro": {
+      "type": ["string", "null"],
+      "description": "Ближайшая станция метро"
+    },
+    "metro_distance": {
+      "type": ["integer", "null"],
+      "description": "Расстояние до метро (метры)",
+      "minimum": 0
+    },
+    "latitude": {
+      "type": ["number", "null"],
+      "description": "Широта",
+      "minimum": -90,
+      "maximum": 90
+    },
+    "longitude": {
+      "type": ["number", "null"],
+      "description": "Долгота",
+      "minimum": -180,
+      "maximum": 180
+    },
+    "rent_income_month": {
+      "type": ["number", "null"],
+      "description": "Арендный доход в месяц (руб) - для ГАБ",
+      "minimum": 0
+    },
+    "rent_income_year": {
+      "type": ["number", "null"],
+      "description": "Арендный доход в год (руб) - для ГАБ",
+      "minimum": 0
+    },
+    "tenant": {
+      "type": ["string", "null"],
+      "description": "Арендатор (для ГАБ)",
+      "example": "Пятёрочка, Магнит"
+    },
+    "contract_years": {
+      "type": ["number", "null"],
+      "description": "Срок договора аренды (лет) - для ГАБ",
+      "minimum": 0
+    },
+    "roi": {
+      "type": ["number", "null"],
+      "description": "Доходность в процентах годовых (автоматический расчёт)",
+      "minimum": 0
+    },
+    "payback_years": {
+      "type": ["number", "null"],
+      "description": "Срок окупаемости (лет) (автоматический расчёт)",
+      "minimum": 0
+    },
+    "status": {
+      "type": "string",
+      "enum": ["ready", "construction"],
+      "description": "Статус: готово или строится"
+    },
+    "finish_date": {
+      "type": ["string", "null"],
+      "description": "Дата сдачи (ISO 8601)",
+      "format": "date",
+      "example": "2027-12-31"
+    },
+    "images": {
+      "type": "array",
+      "description": "Фотографии объекта",
+      "items": {
+        "type": "string",
+        "format": "uri"
+      }
+    },
+    "plan_image": {
+      "type": ["string", "null"],
+      "description": "Планировка объекта (URL)",
+      "format": "uri"
+    },
+    "url": {
+      "type": "string",
+      "description": "Ссылка на объект у застройщика",
+      "format": "uri"
+    },
+    "has_installment": {
+      "type": "boolean",
+      "description": "Доступна рассрочка",
+      "default": false
+    },
+    "has_mortgage": {
+      "type": "boolean",
+      "description": "Доступна ипотека",
+      "default": false
+    },
+    "description": {
+      "type": ["string", "null"],
+      "description": "Описание объекта"
+    },
+    "created_at": {
+      "type": "string",
+      "description": "Дата создания записи (ISO 8601)",
+      "format": "date-time"
+    },
+    "updated_at": {
+      "type": "string",
+      "description": "Дата последнего обновления (ISO 8601)",
+      "format": "date-time"
+    },
+    "source_feed": {
+      "type": "string",
+      "description": "Источник данных",
+      "example": "brusnika_yandex"
+    }
+  }
+}
