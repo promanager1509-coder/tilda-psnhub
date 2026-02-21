@@ -1,0 +1,35 @@
+{
+  "total_units": 554,
+  "by_developer": {
+    "mrgroup": 31,
+    "samolet": 70,
+    "pik": 135,
+    "lsr": 171,
+    "fsk": 100,
+    "brusnika": 47
+  },
+  "by_type": {
+    "psn": 401,
+    "office": 106,
+    "retail": 47
+  },
+  "by_city": {
+    "moscow": 384,
+    "mo": 170
+  },
+  "by_deal": {
+    "sale": 554
+  },
+  "price_stats": {
+    "min": 8014200.0,
+    "max": 3549500000.0,
+    "avg": 43690843.98542805
+  },
+  "area_stats": {
+    "min": 21.4,
+    "max": 47957.0,
+    "avg": 1265.2716245487363
+  },
+  "gab_count": 135,
+  "with_roi": 135
+}
