@@ -1,818 +1,881 @@
 /**
- * PSNHUB CORE.JS v1.0.0
- * Единый движок каталога коммерческой недвижимости
- * 
- * Работает на всех 28 страницах через систему пресетов
- * Данные загружаются с GitHub через jsDelivr CDN
+ * PSNHUB / ДомРадар runtime
+ * Transitional live version for Tilda.
+ * Product logic follows the new DomRadar preset navigation model.
  */
 
 (function() {
   'use strict';
 
-  // ==========================================================================
-  // КОНФИГУРАЦИЯ
-  // ==========================================================================
-
-  const CONFIG = {
+  var CONFIG = {
     BASE_URL: 'https://cdn.jsdelivr.net/gh/promanager1509-coder/tilda-psnhub@main',
-    CACHE_ENABLED: true,
-    CACHE_TTL: 3600000, // 1 час
-    VIRTUAL_SCROLL: true,
-    ITEMS_PER_PAGE: 20,
+    ITEMS_PER_PAGE: 12,
+    CACHE_TTL: 15 * 60 * 1000,
     DEBUG: false
   };
 
-  // ==========================================================================
-  // UTILITIES
-  // ==========================================================================
+  var ENTRANCES = [
+    {
+      id: 'new_buildings',
+      title: 'Новостройки коммерции',
+      description: 'Коммерческие помещения в новых проектах'
+    },
+    {
+      id: 'business_centers',
+      title: 'Бизнес-центры',
+      description: 'Офисы и площади в готовых зданиях'
+    },
+    {
+      id: 'market_participants',
+      title: 'Участники рынка',
+      description: 'Девелоперы, собственники, управляющие компании'
+    },
+    {
+      id: 'risk_registry',
+      title: 'Реестр риска',
+      description: 'Долгострой, банкротства, суды и другие сигналы'
+    }
+  ];
 
-  const Utils = {
-    log(...args) {
-      if (CONFIG.DEBUG) console.log('[PSNHUB]', ...args);
+  var SCENARIOS = [
+    { id: 'buy', title: 'Купить', entrances: ['new_buildings', 'business_centers'] },
+    { id: 'rent', title: 'Арендовать', entrances: ['new_buildings', 'business_centers'] },
+    { id: 'invest', title: 'Инвестировать', entrances: ['new_buildings', 'business_centers'] },
+    { id: 'tenant', title: 'С арендатором', entrances: ['new_buildings', 'business_centers'] },
+    { id: 'construction', title: 'В строящемся проекте', entrances: ['new_buildings'] },
+    { id: 'ready', title: 'В готовом объекте', entrances: ['new_buildings', 'business_centers'] }
+  ];
+
+  var GEO = {
+    regions: [
+      {
+        id: 'moscow',
+        title: 'Москва',
+        okrugs: [
+          { id: 'cao', title: 'ЦАО', districts: [] },
+          { id: 'sao', title: 'САО', districts: [] },
+          { id: 'svao', title: 'СВАО', districts: [] },
+          { id: 'vao', title: 'ВАО', districts: ['Авиамоторная', 'Шоссе Энтузиастов', 'Новогиреево', 'Перово', 'Соколиная Гора', 'Некрасовка'] },
+          { id: 'uvao', title: 'ЮВАО', districts: [] },
+          { id: 'uao', title: 'ЮАО', districts: [] },
+          { id: 'uzao', title: 'ЮЗАО', districts: [] },
+          { id: 'zao', title: 'ЗАО', districts: [] },
+          { id: 'szao', title: 'СЗАО', districts: [] },
+          { id: 'tinao', title: 'ТиНАО', districts: [] }
+        ]
+      },
+      { id: 'moscow_oblast', title: 'Московская область', okrugs: [] },
+      { id: 'saint_petersburg', title: 'Санкт-Петербург', okrugs: [] },
+      { id: 'regions', title: 'Регионы', okrugs: [] }
+    ]
+  };
+
+  var PARAM_GROUPS = [
+    {
+      key: 'area',
+      title: 'Площадь',
+      type: 'single',
+      options: [
+        { id: 'lt50', title: 'до 50 м2' },
+        { id: '50_150', title: '50-150 м2' },
+        { id: '150_300', title: '150-300 м2' },
+        { id: 'gt300', title: '300+ м2' }
+      ]
+    },
+    {
+      key: 'budget',
+      title: 'Бюджет',
+      type: 'single',
+      options: [
+        { id: 'lt30m', title: 'до 30 млн' },
+        { id: '30_60m', title: '30-60 млн' },
+        { id: '60_100m', title: '60-100 млн' },
+        { id: 'gt100m', title: '100+ млн' }
+      ]
+    },
+    {
+      key: 'property_type',
+      title: 'Назначение',
+      type: 'multi',
+      options: [
+        { id: 'psn', title: 'ПСН' },
+        { id: 'office', title: 'Офис' },
+        { id: 'gab_ready', title: 'ГАБ' },
+        { id: 'warehouse', title: 'Склад' }
+      ]
+    },
+    {
+      key: 'features',
+      title: 'Критичные параметры',
+      type: 'multi',
+      options: [
+        { id: 'first_line', title: 'Первая линия' },
+        { id: 'showcase_windows', title: 'Витрина' },
+        { id: 'parking', title: 'Парковка' },
+        { id: 'construction', title: 'Строится' },
+        { id: 'ready', title: 'Готовый объект' }
+      ]
+    }
+  ];
+
+  var OKRUG_MAP = {
+    'ЦАО': 'cao',
+    'САО': 'sao',
+    'СВАО': 'svao',
+    'ВАО': 'vao',
+    'ЮВАО': 'uvao',
+    'ЮАО': 'uao',
+    'ЮЗАО': 'uzao',
+    'ЗАО': 'zao',
+    'СЗАО': 'szao',
+    'ТИНАО': 'tinao',
+    'ТиНАО': 'tinao'
+  };
+
+  var Utils = {
+    log: function() {
+      if (CONFIG.DEBUG) console.log.apply(console, ['[DomRadar]'].concat([].slice.call(arguments)));
     },
 
-    error(...args) {
-      console.error('[PSNHUB ERROR]', ...args);
-    },
-
-    formatPrice(price) {
-      if (!price) return 'Цена не указана';
-      const millions = (price / 1000000).toFixed(1);
-      return `${millions} млн ₽`;
-    },
-
-    formatArea(area) {
-      if (!area) return '';
-      return `${area.toFixed(1)} м²`;
-    },
-
-    formatPricePerSqm(price) {
-      if (!price) return '';
-      return `${Math.round(price).toLocaleString('ru-RU')} ₽/м²`;
-    },
-
-    debounce(func, wait) {
-      let timeout;
-      return function executedFunction(...args) {
-        const later = () => {
-          clearTimeout(timeout);
-          func(...args);
-        };
-        clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
-      };
-    },
-
-    getFromCache(key) {
-      if (!CONFIG.CACHE_ENABLED) return null;
+    cacheGet: function(key) {
       try {
-        const item = localStorage.getItem(`psnhub_${key}`);
-        if (!item) return null;
-        const { data, timestamp } = JSON.parse(item);
-        if (Date.now() - timestamp > CONFIG.CACHE_TTL) {
-          localStorage.removeItem(`psnhub_${key}`);
-          return null;
-        }
-        return data;
-      } catch (e) {
+        var raw = localStorage.getItem('domradar_' + key);
+        if (!raw) return null;
+        var payload = JSON.parse(raw);
+        if (Date.now() - payload.timestamp > CONFIG.CACHE_TTL) return null;
+        return payload.data;
+      } catch (error) {
         return null;
       }
     },
 
-    setToCache(key, data) {
-      if (!CONFIG.CACHE_ENABLED) return;
+    cacheSet: function(key, data) {
       try {
-        localStorage.setItem(`psnhub_${key}`, JSON.stringify({
-          data,
-          timestamp: Date.now()
+        localStorage.setItem('domradar_' + key, JSON.stringify({
+          timestamp: Date.now(),
+          data: data
         }));
-      } catch (e) {
-        Utils.error('Cache write failed:', e);
+      } catch (error) {
+        Utils.log('Cache disabled', error);
       }
+    },
+
+    fetchJSON: function(url) {
+      return fetch(url).then(function(response) {
+        if (!response.ok) {
+          throw new Error('HTTP ' + response.status + ': ' + url);
+        }
+        return response.json();
+      });
+    },
+
+    formatPrice: function(value) {
+      if (!value) return 'Цена по запросу';
+      return Math.round(value).toLocaleString('ru-RU') + ' ₽';
+    },
+
+    formatCompactPrice: function(value) {
+      if (!value) return 'Цена по запросу';
+      if (value >= 1000000) {
+        return (value / 1000000).toFixed(1).replace('.0', '') + ' млн ₽';
+      }
+      return Math.round(value).toLocaleString('ru-RU') + ' ₽';
+    },
+
+    formatArea: function(value) {
+      if (!value) return '';
+      return String(Math.round(value * 10) / 10).replace('.0', '') + ' м2';
+    },
+
+    escapeHTML: function(value) {
+      return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
     }
   };
 
-  // ==========================================================================
-  // LOADER — ЗАГРУЗКА ДАННЫХ
-  // ==========================================================================
+  function createDefaultState() {
+    return {
+      entrance: null,
+      scenario: null,
+      geo: {
+        region: null,
+        okrug: null,
+        district: null
+      },
+      params: {},
+      currentPage: 1
+    };
+  }
 
-  const Loader = {
-    async fetchJSON(url) {
-      Utils.log('Fetching:', url);
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${url}`);
-      }
-      return await response.json();
-    },
-
-    async loadManifest() {
-      const cached = Utils.getFromCache('manifest');
-      if (cached) {
-        Utils.log('Manifest from cache');
-        return cached;
-      }
-
-      const manifest = await this.fetchJSON(`${CONFIG.BASE_URL}/manifest.json`);
-      Utils.setToCache('manifest', manifest);
-      return manifest;
-    },
-
-    async loadFacets() {
-      const cached = Utils.getFromCache('facets');
-      if (cached) return cached;
-
-      const facets = await this.fetchJSON(`${CONFIG.BASE_URL}/facets.json`);
-      Utils.setToCache('facets', facets);
-      return facets;
-    },
-
-    async loadKPI() {
-      const cached = Utils.getFromCache('kpi');
-      if (cached) return cached;
-
-      const kpi = await this.fetchJSON(`${CONFIG.BASE_URL}/kpi.json`);
-      Utils.setToCache('kpi', kpi);
-      return kpi;
-    },
-
-    async loadChunk(chunkFile) {
-      const cacheKey = `chunk_${chunkFile}`;
-      const cached = Utils.getFromCache(cacheKey);
-      if (cached) {
-        Utils.log(`Chunk ${chunkFile} from cache`);
-        return cached;
-      }
-
-      const url = `${CONFIG.BASE_URL}/${chunkFile}`;
-      const data = await this.fetchJSON(url);
-      Utils.setToCache(cacheKey, data);
-      return data;
-    },
-
-    async loadAllChunks(manifest) {
-      Utils.log('Loading all chunks...');
-      const promises = manifest.chunks.map(chunk => this.loadChunk(chunk.file));
-      const chunks = await Promise.all(promises);
-      return chunks.flat();
-    },
-
-    async loadFilteredChunks(manifest, preset) {
-      // Умная загрузка: только нужные чанки
-      // TODO: в будущем можно оптимизировать
-      return await this.loadAllChunks(manifest);
-    }
-  };
-
-  // ==========================================================================
-  // STATE — УПРАВЛЕНИЕ СОСТОЯНИЕМ
-  // ==========================================================================
-
-  const State = {
+  var State = {
+    rawUnits: [],
     units: [],
-    filteredUnits: [],
-    filters: {},
-    preset: {},
-    facets: {},
-    kpi: {},
-    currentPage: 1,
+    results: [],
+    ui: createDefaultState(),
 
-    init(preset = {}) {
-      this.preset = preset;
-      this.loadFiltersFromURL();
-      this.loadFiltersFromLocalStorage();
-      
-      // Применяем пресет как начальные фильтры
-      this.filters = { ...preset, ...this.filters };
+    loadFromURL: function() {
+      var params = new URLSearchParams(window.location.search);
+      if (params.get('entrance')) this.ui.entrance = params.get('entrance');
+      if (params.get('scenario')) this.ui.scenario = params.get('scenario');
+      if (params.get('region')) this.ui.geo.region = params.get('region');
+      if (params.get('okrug')) this.ui.geo.okrug = params.get('okrug');
+      if (params.get('district')) this.ui.geo.district = params.get('district');
     },
 
-    setFilter(key, value) {
-      if (value === null || value === undefined || value === '') {
-        delete this.filters[key];
-      } else {
-        this.filters[key] = value;
-      }
-      this.saveFiltersToURL();
-      this.saveFiltersToLocalStorage();
-      this.currentPage = 1; // Сброс на первую страницу
-    },
-
-    toggleFilter(key, value) {
-      // Для множественного выбора
-      if (!this.filters[key]) {
-        this.filters[key] = [value];
-      } else if (Array.isArray(this.filters[key])) {
-        const index = this.filters[key].indexOf(value);
-        if (index > -1) {
-          this.filters[key].splice(index, 1);
-          if (this.filters[key].length === 0) {
-            delete this.filters[key];
-          }
-        } else {
-          this.filters[key].push(value);
-        }
-      } else {
-        this.filters[key] = [this.filters[key], value];
-      }
-      this.saveFiltersToURL();
-      this.saveFiltersToLocalStorage();
-      this.currentPage = 1;
-    },
-
-    clearFilters() {
-      this.filters = { ...this.preset }; // Оставляем только пресет
-      this.currentPage = 1;
-      this.saveFiltersToURL();
-      this.saveFiltersToLocalStorage();
-    },
-
-    loadFiltersFromURL() {
-      const params = new URLSearchParams(window.location.search);
-      params.forEach((value, key) => {
-        try {
-          this.filters[key] = JSON.parse(value);
-        } catch {
-          this.filters[key] = value;
-        }
-      });
-    },
-
-    saveFiltersToURL() {
-      const params = new URLSearchParams();
-      Object.entries(this.filters).forEach(([key, value]) => {
-        if (value !== null && value !== undefined) {
-          params.set(key, typeof value === 'object' ? JSON.stringify(value) : value);
-        }
-      });
-      const newURL = `${window.location.pathname}${params.toString() ? '?' + params.toString() : ''}`;
+    saveToURL: function() {
+      var params = new URLSearchParams();
+      if (this.ui.entrance) params.set('entrance', this.ui.entrance);
+      if (this.ui.scenario) params.set('scenario', this.ui.scenario);
+      if (this.ui.geo.region) params.set('region', this.ui.geo.region);
+      if (this.ui.geo.okrug) params.set('okrug', this.ui.geo.okrug);
+      if (this.ui.geo.district) params.set('district', this.ui.geo.district);
+      var newURL = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
       window.history.replaceState({}, '', newURL);
     },
 
-    loadFiltersFromLocalStorage() {
-      try {
-        const saved = localStorage.getItem('psnhub_last_filters');
-        if (saved) {
-          const lastFilters = JSON.parse(saved);
-          // Не перезаписываем фильтры из URL
-          Object.keys(lastFilters).forEach(key => {
-            if (!(key in this.filters)) {
-              this.filters[key] = lastFilters[key];
-            }
-          });
-        }
-      } catch (e) {
-        Utils.error('Failed to load filters from localStorage:', e);
-      }
+    setEntrance: function(value) {
+      this.ui.entrance = value;
+      this.ui.currentPage = 1;
+      this.saveToURL();
     },
 
-    saveFiltersToLocalStorage() {
-      try {
-        localStorage.setItem('psnhub_last_filters', JSON.stringify(this.filters));
-      } catch (e) {
-        Utils.error('Failed to save filters to localStorage:', e);
+    setScenario: function(value) {
+      this.ui.scenario = value;
+      this.ui.currentPage = 1;
+      this.saveToURL();
+    },
+
+    setRegion: function(value) {
+      this.ui.geo.region = value;
+      this.ui.geo.okrug = null;
+      this.ui.geo.district = null;
+      this.ui.currentPage = 1;
+      this.saveToURL();
+    },
+
+    setOkrug: function(value) {
+      this.ui.geo.okrug = value;
+      this.ui.geo.district = null;
+      this.ui.currentPage = 1;
+      this.saveToURL();
+    },
+
+    setDistrict: function(value) {
+      this.ui.geo.district = value;
+      this.ui.currentPage = 1;
+      this.saveToURL();
+    },
+
+    toggleParam: function(groupKey, optionId, mode) {
+      if (mode === 'single') {
+        this.ui.params[groupKey] = this.ui.params[groupKey] === optionId ? null : optionId;
+        if (!this.ui.params[groupKey]) delete this.ui.params[groupKey];
+      } else {
+        var current = this.ui.params[groupKey] || [];
+        var next = current.slice();
+        var index = next.indexOf(optionId);
+        if (index === -1) next.push(optionId);
+        else next.splice(index, 1);
+        if (next.length) this.ui.params[groupKey] = next;
+        else delete this.ui.params[groupKey];
       }
+      this.ui.currentPage = 1;
+    },
+
+    clearAll: function() {
+      this.ui = createDefaultState();
+      this.saveToURL();
     }
   };
 
-  // ==========================================================================
-  // SELECTORS — ЛОГИКА ФИЛЬТРАЦИИ
-  // ==========================================================================
+  var Loader = {
+    loadManifest: function() {
+      var cached = Utils.cacheGet('manifest');
+      if (cached) return Promise.resolve(cached);
+      return Utils.fetchJSON(CONFIG.BASE_URL + '/manifest.json').then(function(data) {
+        Utils.cacheSet('manifest', data);
+        return data;
+      });
+    },
 
-  const Selectors = {
-    applyFilters(units, filters) {
-      Utils.log('Applying filters:', filters);
-      let result = [...units];
+    loadChunk: function(chunkFile) {
+      var cacheKey = 'chunk_' + chunkFile;
+      var cached = Utils.cacheGet(cacheKey);
+      if (cached) return Promise.resolve(cached);
+      return Utils.fetchJSON(CONFIG.BASE_URL + '/' + chunkFile).then(function(data) {
+        Utils.cacheSet(cacheKey, data);
+        return data;
+      });
+    },
 
-      // Тип объекта
-      if (filters.type) {
-        result = result.filter(u => u.type === filters.type);
-      }
+    loadUnits: function() {
+      return this.loadManifest().then(function(manifest) {
+        return Promise.all(manifest.chunks.map(function(chunk) {
+          return Loader.loadChunk(chunk.file);
+        }));
+      }).then(function(chunkSets) {
+        return chunkSets.reduce(function(acc, chunk) {
+          return acc.concat(chunk);
+        }, []);
+      });
+    }
+  };
 
-      // Тип сделки
-      if (filters.deal) {
-        result = result.filter(u => u.deal === filters.deal);
+  var Mapper = {
+    inferOkrugAndDistrict: function(rawDistrict) {
+      var value = (rawDistrict || '').trim();
+      var upper = value.toUpperCase();
+      if (OKRUG_MAP[upper] || OKRUG_MAP[value]) {
+        return {
+          okrug: OKRUG_MAP[upper] || OKRUG_MAP[value],
+          district: null
+        };
       }
+      return {
+        okrug: null,
+        district: value || null
+      };
+    },
 
-      // Застройщик (может быть массив)
-      if (filters.developer) {
-        const devs = Array.isArray(filters.developer) ? filters.developer : [filters.developer];
-        result = result.filter(u => devs.includes(u.developer));
-      }
+    inferEntrance: function(unit) {
+      if (unit.type === 'office') return 'business_centers';
+      if (unit.status === 'construction') return 'new_buildings';
+      return 'business_centers';
+    },
 
-      // Город
-      if (filters.city) {
-        result = result.filter(u => u.city === filters.city);
-      }
+    mapUnit: function(unit) {
+      var geo = this.inferOkrugAndDistrict(unit.district);
+      return {
+        object_id: unit.id,
+        entrance_type: this.inferEntrance(unit),
+        title: unit.jk || unit.number || unit.type_label || unit.type || 'Объект',
+        project_name: unit.jk || null,
+        property_type: unit.type || null,
+        deal_type: unit.deal || null,
+        price: typeof unit.price === 'number' ? unit.price : null,
+        price_per_m2: typeof unit.price_per_sqm === 'number' ? unit.price_per_sqm : null,
+        area_total: typeof unit.area === 'number' ? unit.area : null,
+        floor: typeof unit.floor === 'number' ? unit.floor : null,
+        floors_total: typeof unit.floors_total === 'number' ? unit.floors_total : null,
+        first_line: Boolean(unit.first_line),
+        showcase_windows: Boolean(unit.showcase_windows),
+        parking: Boolean(unit.has_parking),
+        building_status: unit.status || null,
+        region: unit.city === 'moscow' ? 'moscow' : unit.city === 'mo' ? 'moscow_oblast' : null,
+        city: unit.city || null,
+        city_name: unit.city_name || null,
+        okrug: geo.okrug,
+        district: geo.district,
+        metro: unit.metro || null,
+        address_text: unit.address || null,
+        developer_id: unit.developer || null,
+        developer_name: unit.developer_name || null,
+        external_url: unit.url || null,
+        roi: unit.roi || null,
+        payback_years: unit.payback_years || null,
+        source_name: unit.source || unit.source_feed || null
+      };
+    }
+  };
 
-      // Округ (только для Москвы)
-      if (filters.district && filters.city === 'moscow') {
-        result = result.filter(u => u.district === filters.district);
-      }
+  var Selectors = {
+    adaptLegacyPreset: function(preset) {
+      var next = createDefaultState();
+      if (!preset) return next;
 
-      // Метро (для Москвы)
-      if (filters.metro) {
-        result = result.filter(u => u.metro && u.metro.includes(filters.metro));
-      }
+      if (preset.city === 'moscow') next.geo.region = 'moscow';
+      if (preset.city === 'mo') next.geo.region = 'moscow_oblast';
+      if (preset.deal === 'rent') next.scenario = 'rent';
+      if (preset.deal === 'sale') next.scenario = 'buy';
+      if (preset.type === 'office') next.entrance = 'business_centers';
+      if (preset.status === 'construction') next.entrance = 'new_buildings';
+      if (!next.entrance && preset.type) next.entrance = 'new_buildings';
 
-      // Ценовые диапазоны
-      if (filters.price_min) {
-        result = result.filter(u => u.price >= parseFloat(filters.price_min));
-      }
-      if (filters.price_max) {
-        result = result.filter(u => u.price <= parseFloat(filters.price_max));
-      }
+      return next;
+    },
 
-      // Быстрые пресеты по цене
-      if (filters.price_range) {
-        switch (filters.price_range) {
-          case 'до 30 млн':
-            result = result.filter(u => u.price < 30000000);
-            break;
-          case '30-60 млн':
-            result = result.filter(u => u.price >= 30000000 && u.price < 60000000);
-            break;
-          case '60-100 млн':
-            result = result.filter(u => u.price >= 60000000 && u.price < 100000000);
-            break;
-          case '100+ млн':
-            result = result.filter(u => u.price >= 100000000);
-            break;
-        }
-      }
+    getEntranceById: function(id) {
+      return ENTRANCES.find(function(item) { return item.id === id; }) || null;
+    },
 
-      // Площадь
-      if (filters.area_min) {
-        result = result.filter(u => u.area >= parseFloat(filters.area_min));
-      }
-      if (filters.area_max) {
-        result = result.filter(u => u.area <= parseFloat(filters.area_max));
-      }
+    getScenarioById: function(id) {
+      return SCENARIOS.find(function(item) { return item.id === id; }) || null;
+    },
 
-      // Быстрые пресеты по площади
-      if (filters.area_range) {
-        switch (filters.area_range) {
-          case 'до 50 м²':
-            result = result.filter(u => u.area < 50);
-            break;
-          case '50-150 м²':
-            result = result.filter(u => u.area >= 50 && u.area < 150);
-            break;
-          case '150-300 м²':
-            result = result.filter(u => u.area >= 150 && u.area < 300);
-            break;
-          case '300+ м²':
-            result = result.filter(u => u.area >= 300);
-            break;
-        }
-      }
+    getAvailableScenarios: function(entrance) {
+      if (!entrance) return SCENARIOS;
+      return SCENARIOS.filter(function(item) {
+        return item.entrances.indexOf(entrance) !== -1;
+      });
+    },
 
-      // Этаж
-      if (filters.floor) {
-        if (filters.floor === '1') {
-          result = result.filter(u => u.floor === 1);
-        } else if (filters.floor === '2+') {
-          result = result.filter(u => u.floor && u.floor > 1);
-        }
-      }
+    getRegionById: function(id) {
+      return GEO.regions.find(function(item) { return item.id === id; }) || null;
+    },
 
-      // ГАБ
-      if (filters.is_gab === true || filters.is_gab === 'true') {
-        result = result.filter(u => u.is_gab === true);
-      }
+    getOkrugs: function(regionId) {
+      var region = this.getRegionById(regionId);
+      return region ? region.okrugs : [];
+    },
 
-      // ROI (для инвесторов)
-      if (filters.roi_min) {
-        result = result.filter(u => u.roi && u.roi >= parseFloat(filters.roi_min));
-      }
+    getDistricts: function(regionId, okrugId) {
+      var okrugs = this.getOkrugs(regionId);
+      var okrug = okrugs.find(function(item) { return item.id === okrugId; });
+      return okrug ? okrug.districts : [];
+    },
 
-      // Окупаемость (для инвесторов)
-      if (filters.payback_max) {
-        result = result.filter(u => u.payback_years && u.payback_years <= parseFloat(filters.payback_max));
+    applyScenario: function(units, scenario) {
+      if (!scenario) return units;
+      switch (scenario) {
+        case 'buy':
+          return units.filter(function(unit) { return unit.deal_type === 'sale'; });
+        case 'rent':
+          return units.filter(function(unit) { return unit.deal_type === 'rent'; });
+        case 'invest':
+          return units.filter(function(unit) { return unit.roi || unit.payback_years || unit.property_type === 'gab_ready'; });
+        case 'tenant':
+          return units.filter(function(unit) { return unit.property_type === 'gab_ready' || unit.property_type === 'gab_franchise'; });
+        case 'construction':
+          return units.filter(function(unit) { return unit.building_status === 'construction'; });
+        case 'ready':
+          return units.filter(function(unit) { return unit.building_status === 'ready'; });
+        default:
+          return units;
       }
+    },
 
-      // Рассрочка
-      if (filters.has_installment === true || filters.has_installment === 'true') {
-        result = result.filter(u => u.has_installment === true);
+    applyGeo: function(units, geo) {
+      var result = units.slice();
+      if (geo.region) {
+        result = result.filter(function(unit) { return unit.region === geo.region; });
       }
-
-      // Ипотека
-      if (filters.has_mortgage === true || filters.has_mortgage === 'true') {
-        result = result.filter(u => u.has_mortgage === true);
+      if (geo.okrug) {
+        result = result.filter(function(unit) { return unit.okrug === geo.okrug; });
       }
-
-      // Текстовый поиск
-      if (filters.search) {
-        const searchLower = filters.search.toLowerCase();
-        result = result.filter(u => 
-          u.jk?.toLowerCase().includes(searchLower) ||
-          u.address?.toLowerCase().includes(searchLower) ||
-          u.developer_name?.toLowerCase().includes(searchLower)
-        );
+      if (geo.district) {
+        result = result.filter(function(unit) {
+          return unit.district === geo.district || unit.metro === geo.district;
+        });
       }
-
-      Utils.log(`Filtered: ${result.length} units (from ${units.length})`);
       return result;
     },
 
-    sortUnits(units, sortBy = 'price_asc') {
-      const sorted = [...units];
-      
-      switch (sortBy) {
-        case 'price_asc':
-          sorted.sort((a, b) => (a.price || 0) - (b.price || 0));
-          break;
-        case 'price_desc':
-          sorted.sort((a, b) => (b.price || 0) - (a.price || 0));
-          break;
-        case 'area_asc':
-          sorted.sort((a, b) => (a.area || 0) - (b.area || 0));
-          break;
-        case 'area_desc':
-          sorted.sort((a, b) => (b.area || 0) - (a.area || 0));
-          break;
-        case 'roi_desc':
-          sorted.sort((a, b) => (b.roi || 0) - (a.roi || 0));
-          break;
-        case 'payback_asc':
-          sorted.sort((a, b) => (a.payback_years || 999) - (b.payback_years || 999));
-          break;
-        default:
-          // По умолчанию — по цене
-          sorted.sort((a, b) => (a.price || 0) - (b.price || 0));
+    applyParams: function(units, params) {
+      var result = units.slice();
+
+      if (params.area) {
+        result = result.filter(function(unit) {
+          var area = unit.area_total || 0;
+          switch (params.area) {
+            case 'lt50': return area < 50;
+            case '50_150': return area >= 50 && area < 150;
+            case '150_300': return area >= 150 && area < 300;
+            case 'gt300': return area >= 300;
+            default: return true;
+          }
+        });
       }
 
-      return sorted;
+      if (params.budget) {
+        result = result.filter(function(unit) {
+          var price = unit.price || 0;
+          switch (params.budget) {
+            case 'lt30m': return price < 30000000;
+            case '30_60m': return price >= 30000000 && price < 60000000;
+            case '60_100m': return price >= 60000000 && price < 100000000;
+            case 'gt100m': return price >= 100000000;
+            default: return true;
+          }
+        });
+      }
+
+      if (params.property_type && params.property_type.length) {
+        result = result.filter(function(unit) {
+          return params.property_type.indexOf(unit.property_type) !== -1;
+        });
+      }
+
+      if (params.features && params.features.length) {
+        result = result.filter(function(unit) {
+          return params.features.every(function(feature) {
+            if (feature === 'construction') return unit.building_status === 'construction';
+            if (feature === 'ready') return unit.building_status === 'ready';
+            return Boolean(unit[feature]);
+          });
+        });
+      }
+
+      return result;
     },
 
-    computeDynamicFacets(units) {
-      // Пересчёт доступных значений фильтров на основе текущей выборки
-      const facets = {
-        developers: {},
-        types: {},
-        cities: {},
-        districts: {},
-        price_ranges: {
-          'до 30 млн': 0,
-          '30-60 млн': 0,
-          '60-100 млн': 0,
-          '100+ млн': 0
-        },
-        area_ranges: {
-          'до 50 м²': 0,
-          '50-150 м²': 0,
-          '150-300 м²': 0,
-          '300+ м²': 0
-        }
-      };
+    applyAll: function(units, uiState) {
+      if (uiState.entrance === 'market_participants' || uiState.entrance === 'risk_registry') {
+        return [];
+      }
 
-      units.forEach(u => {
-        // Застройщики
-        facets.developers[u.developer] = (facets.developers[u.developer] || 0) + 1;
-        
-        // Типы
-        facets.types[u.type] = (facets.types[u.type] || 0) + 1;
-        
-        // Города
-        facets.cities[u.city] = (facets.cities[u.city] || 0) + 1;
-        
-        // Округа
-        if (u.district) {
-          facets.districts[u.district] = (facets.districts[u.district] || 0) + 1;
-        }
+      var result = units.slice();
 
-        // Ценовые диапазоны
-        if (u.price < 30000000) facets.price_ranges['до 30 млн']++;
-        else if (u.price < 60000000) facets.price_ranges['30-60 млн']++;
-        else if (u.price < 100000000) facets.price_ranges['60-100 млн']++;
-        else facets.price_ranges['100+ млн']++;
+      if (uiState.entrance) {
+        result = result.filter(function(unit) { return unit.entrance_type === uiState.entrance; });
+      }
 
-        // Диапазоны площади
-        if (u.area < 50) facets.area_ranges['до 50 м²']++;
-        else if (u.area < 150) facets.area_ranges['50-150 м²']++;
-        else if (u.area < 300) facets.area_ranges['150-300 м²']++;
-        else facets.area_ranges['300+ м²']++;
+      result = this.applyScenario(result, uiState.scenario);
+      result = this.applyGeo(result, uiState.geo);
+      result = this.applyParams(result, uiState.params);
+
+      return result.sort(function(a, b) {
+        return (a.price || 0) - (b.price || 0);
       });
+    },
 
-      return facets;
+    getStep: function(uiState) {
+      if (!uiState.entrance) return 1;
+      if (!uiState.scenario) return 2;
+      if (!uiState.geo.region) return 3;
+      if (Object.keys(uiState.params).length === 0) return 4;
+      return 5;
+    },
+
+    getSummary: function(uiState) {
+      var parts = [];
+      var entrance = this.getEntranceById(uiState.entrance);
+      var scenario = this.getScenarioById(uiState.scenario);
+      var region = this.getRegionById(uiState.geo.region);
+
+      if (entrance) parts.push(entrance.title);
+      if (scenario) parts.push(scenario.title);
+      if (region) parts.push(region.title);
+
+      var okrugs = this.getOkrugs(uiState.geo.region);
+      var okrug = okrugs.find(function(item) { return item.id === uiState.geo.okrug; });
+      if (okrug) parts.push(okrug.title);
+      if (uiState.geo.district) parts.push(uiState.geo.district);
+
+      return parts;
     }
   };
 
-  // ==========================================================================
-  // METRICS — РАСЧЁТ ИНВЕСТИЦИОННЫХ ПОКАЗАТЕЛЕЙ
-  // ==========================================================================
-
-  const Metrics = {
-    calculateROI(unit) {
-      if (!unit.rent_income_year || !unit.price) return null;
-      return ((unit.rent_income_year / unit.price) * 100).toFixed(2);
+  var Render = {
+    mountRoot: function() {
+      var host = document.getElementById('psnhub-catalog');
+      if (!host) {
+        host = document.createElement('section');
+        host.id = 'psnhub-catalog';
+        document.body.appendChild(host);
+      }
+      host.className = 'domradar-app';
+      return host;
     },
 
-    calculatePayback(unit) {
-      if (!unit.rent_income_year || !unit.price) return null;
-      return (unit.price / unit.rent_income_year).toFixed(1);
+    render: function() {
+      State.results = Selectors.applyAll(State.units, State.ui);
+      var host = this.mountRoot();
+      host.innerHTML = this.renderShell();
+      this.bindEvents(host);
     },
 
-    enrichUnit(unit) {
-      const enriched = { ...unit };
-      
-      // ROI
-      if (!enriched.roi && enriched.rent_income_year && enriched.price) {
-        enriched.roi = parseFloat(this.calculateROI(enriched));
-      }
-      
-      // Окупаемость
-      if (!enriched.payback_years && enriched.rent_income_year && enriched.price) {
-        enriched.payback_years = parseFloat(this.calculatePayback(enriched));
-      }
-      
-      // Цена за м²
-      if (!enriched.price_per_sqm && enriched.price && enriched.area) {
-        enriched.price_per_sqm = enriched.price / enriched.area;
-      }
+    renderShell: function() {
+      var step = Selectors.getStep(State.ui);
+      var summary = Selectors.getSummary(State.ui);
+      var resultCount = State.results.length;
 
-      return enriched;
+      return [
+        '<div class="domradar-shell">',
+        this.renderHero(step, summary, resultCount),
+        this.renderEntrances(),
+        this.renderScenarios(),
+        this.renderGeo(),
+        this.renderParams(),
+        this.renderResults(),
+        '</div>'
+      ].join('');
     },
 
-    enrichAllUnits(units) {
-      return units.map(u => this.enrichUnit(u));
+    renderHero: function(step, summary, resultCount) {
+      var pills = summary.length
+        ? summary.map(function(item) {
+            return '<span class="domradar-summary-pill">' + Utils.escapeHTML(item) + '</span>';
+          }).join('')
+        : '<span class="domradar-summary-empty">Маршрут еще не выбран</span>';
+
+      return [
+        '<section class="domradar-hero">',
+        '<div class="domradar-hero__eyebrow">ДомРадар / тестовая живая сборка</div>',
+        '<h1 class="domradar-hero__title">Маршрут по коммерческой недвижимости без текстового поиска</h1>',
+        '<p class="domradar-hero__text">Выберите вход, сценарий, географию и критичные параметры. Сайт уже работает на живых данных текущего репозитория.</p>',
+        '<div class="domradar-hero__meta">',
+        '<div class="domradar-step">Шаг ' + step + ' из 5</div>',
+        '<button class="domradar-reset" data-action="reset">Сбросить маршрут</button>',
+        '</div>',
+        '<div class="domradar-summary">' + pills + '</div>',
+        '<div class="domradar-kpi">',
+        '<div class="domradar-kpi__item"><span class="domradar-kpi__value">' + State.units.length + '</span><span class="domradar-kpi__label">объектов в базе</span></div>',
+        '<div class="domradar-kpi__item"><span class="domradar-kpi__value">' + resultCount + '</span><span class="domradar-kpi__label">в текущей выдаче</span></div>',
+        '</div>',
+        '</section>'
+      ].join('');
+    },
+
+    renderEntrances: function() {
+      return [
+        '<section class="domradar-section">',
+        '<div class="domradar-section__head"><h2>1. Вход</h2><p>Четыре продукта, разные сценарии работы</p></div>',
+        '<div class="domradar-cards">',
+        ENTRANCES.map(function(item) {
+          var active = State.ui.entrance === item.id ? ' is-active' : '';
+          return [
+            '<button class="domradar-card' + active + '" data-action="set-entrance" data-value="' + item.id + '">',
+            '<span class="domradar-card__title">' + Utils.escapeHTML(item.title) + '</span>',
+            '<span class="domradar-card__text">' + Utils.escapeHTML(item.description) + '</span>',
+            '</button>'
+          ].join('');
+        }).join(''),
+        '</div>',
+        '</section>'
+      ].join('');
+    },
+
+    renderScenarios: function() {
+      var scenarios = Selectors.getAvailableScenarios(State.ui.entrance);
+      return [
+        '<section class="domradar-section">',
+        '<div class="domradar-section__head"><h2>2. Что ищем</h2><p>Сценарий можно менять независимо от географии</p></div>',
+        '<div class="domradar-chips">',
+        scenarios.map(function(item) {
+          var active = State.ui.scenario === item.id ? ' is-active' : '';
+          return '<button class="domradar-chip' + active + '" data-action="set-scenario" data-value="' + item.id + '">' + Utils.escapeHTML(item.title) + '</button>';
+        }).join(''),
+        '</div>',
+        '</section>'
+      ].join('');
+    },
+
+    renderGeo: function() {
+      var okrugs = Selectors.getOkrugs(State.ui.geo.region);
+      var districts = Selectors.getDistricts(State.ui.geo.region, State.ui.geo.okrug);
+      return [
+        '<section class="domradar-section">',
+        '<div class="domradar-section__head"><h2>3. Где ищем</h2><p>География раскрывается каскадом</p></div>',
+        '<div class="domradar-geo">',
+        '<div class="domradar-geo__group"><div class="domradar-geo__label">Регион</div><div class="domradar-chips">',
+        GEO.regions.map(function(item) {
+          var active = State.ui.geo.region === item.id ? ' is-active' : '';
+          return '<button class="domradar-chip' + active + '" data-action="set-region" data-value="' + item.id + '">' + Utils.escapeHTML(item.title) + '</button>';
+        }).join(''),
+        '</div></div>',
+        okrugs.length ? '<div class="domradar-geo__group"><div class="domradar-geo__label">Округ</div><div class="domradar-chips">' + okrugs.map(function(item) {
+          var active = State.ui.geo.okrug === item.id ? ' is-active' : '';
+          return '<button class="domradar-chip' + active + '" data-action="set-okrug" data-value="' + item.id + '">' + Utils.escapeHTML(item.title) + '</button>';
+        }).join('') + '</div></div>' : '',
+        districts.length ? '<div class="domradar-geo__group"><div class="domradar-geo__label">Район / метро</div><div class="domradar-chips">' + districts.map(function(item) {
+          var active = State.ui.geo.district === item ? ' is-active' : '';
+          return '<button class="domradar-chip' + active + '" data-action="set-district" data-value="' + Utils.escapeHTML(item) + '">' + Utils.escapeHTML(item) + '</button>';
+        }).join('') + '</div></div>' : '',
+        '</div>',
+        '</section>'
+      ].join('');
+    },
+
+    renderParams: function() {
+      return [
+        '<section class="domradar-section">',
+        '<div class="domradar-section__head"><h2>4. Критичные параметры</h2><p>Без длинных форм, только готовые пресеты</p></div>',
+        '<div class="domradar-param-groups">',
+        PARAM_GROUPS.map(function(group) {
+          return [
+            '<div class="domradar-param-group">',
+            '<div class="domradar-param-group__title">' + Utils.escapeHTML(group.title) + '</div>',
+            '<div class="domradar-chips">',
+            group.options.map(function(option) {
+              var value = State.ui.params[group.key];
+              var active = Array.isArray(value) ? value.indexOf(option.id) !== -1 : value === option.id;
+              return '<button class="domradar-chip' + (active ? ' is-active' : '') + '" data-action="toggle-param" data-group="' + group.key + '" data-mode="' + group.type + '" data-value="' + option.id + '">' + Utils.escapeHTML(option.title) + '</button>';
+            }).join(''),
+            '</div>',
+            '</div>'
+          ].join('');
+        }).join(''),
+        '</div>',
+        '</section>'
+      ].join('');
+    },
+
+    renderResults: function() {
+      if (State.ui.entrance === 'market_participants') {
+        return this.renderComingSoon('Раздел участников рынка выведем следующим шагом из отдельного company-справочника.');
+      }
+
+      if (State.ui.entrance === 'risk_registry') {
+        return this.renderComingSoon('Реестр риска будет отдельным слоем поверх объектов и компаний, а не фильтром старого каталога.');
+      }
+
+      if (!State.results.length) {
+        return [
+          '<section class="domradar-section">',
+          '<div class="domradar-section__head"><h2>5. Выдача</h2><p>Текущая выборка на живых данных</p></div>',
+          '<div class="domradar-empty">',
+          '<div class="domradar-empty__title">Ничего не найдено</div>',
+          '<div class="domradar-empty__text">Измените маршрут или снимите часть пресетов. Тестовый сайт сейчас работает на переходной базе.</div>',
+          '</div>',
+          '</section>'
+        ].join('');
+      }
+
+      var start = (State.ui.currentPage - 1) * CONFIG.ITEMS_PER_PAGE;
+      var items = State.results.slice(start, start + CONFIG.ITEMS_PER_PAGE);
+      return [
+        '<section class="domradar-section">',
+        '<div class="domradar-section__head"><h2>5. Выдача</h2><p>Переходная витрина на текущих объектах репозитория</p></div>',
+        '<div class="domradar-grid">',
+        items.map(this.renderCard).join(''),
+        '</div>',
+        this.renderPagination(),
+        '</section>'
+      ].join('');
+    },
+
+    renderComingSoon: function(text) {
+      return [
+        '<section class="domradar-section">',
+        '<div class="domradar-section__head"><h2>5. Выдача</h2><p>Раздел уже включен в навигацию, но еще не запитан новыми данными</p></div>',
+        '<div class="domradar-empty">',
+        '<div class="domradar-empty__title">Раздел в сборке</div>',
+        '<div class="domradar-empty__text">' + Utils.escapeHTML(text) + '</div>',
+        '</div>',
+        '</section>'
+      ].join('');
+    },
+
+    renderCard: function(unit) {
+      var chips = [];
+      if (unit.property_type) chips.push(unit.property_type.toUpperCase());
+      if (unit.area_total) chips.push(Utils.formatArea(unit.area_total));
+      if (unit.building_status === 'construction') chips.push('строится');
+      if (unit.building_status === 'ready') chips.push('готовый');
+
+      return [
+        '<article class="domradar-result-card">',
+        '<div class="domradar-result-card__meta">' + chips.map(function(chip) {
+          return '<span class="domradar-mini-chip">' + Utils.escapeHTML(chip) + '</span>';
+        }).join('') + '</div>',
+        '<h3 class="domradar-result-card__title">' + Utils.escapeHTML(unit.title) + '</h3>',
+        '<div class="domradar-result-card__price">' + Utils.formatCompactPrice(unit.price) + '</div>',
+        unit.price_per_m2 ? '<div class="domradar-result-card__subprice">' + Utils.formatPrice(unit.price_per_m2) + ' / м2</div>' : '',
+        '<div class="domradar-result-card__location">' + Utils.escapeHTML(unit.city_name || unit.city || 'Локация уточняется') + (unit.district ? ' · ' + Utils.escapeHTML(unit.district) : '') + '</div>',
+        unit.address_text ? '<div class="domradar-result-card__address">' + Utils.escapeHTML(unit.address_text) + '</div>' : '',
+        '<div class="domradar-result-card__footer">',
+        '<div class="domradar-result-card__developer">' + Utils.escapeHTML(unit.developer_name || 'Источник') + '</div>',
+        unit.external_url ? '<button class="domradar-open-link" data-action="open-unit" data-url="' + Utils.escapeHTML(unit.external_url) + '">Открыть источник</button>' : '',
+        '</div>',
+        '</article>'
+      ].join('');
+    },
+
+    renderPagination: function() {
+      var totalPages = Math.ceil(State.results.length / CONFIG.ITEMS_PER_PAGE);
+      if (totalPages <= 1) return '';
+
+      var parts = ['<div class="domradar-pagination">'];
+      for (var page = 1; page <= totalPages; page += 1) {
+        parts.push('<button class="domradar-page' + (page === State.ui.currentPage ? ' is-active' : '') + '" data-action="go-page" data-value="' + page + '">' + page + '</button>');
+      }
+      parts.push('</div>');
+      return parts.join('');
+    },
+
+    bindEvents: function(host) {
+      host.querySelectorAll('[data-action]').forEach(function(node) {
+        node.addEventListener('click', function(event) {
+          var action = event.currentTarget.getAttribute('data-action');
+          var value = event.currentTarget.getAttribute('data-value');
+
+          if (action === 'set-entrance') {
+            State.setEntrance(value);
+            Render.render();
+            return;
+          }
+
+          if (action === 'set-scenario') {
+            State.setScenario(value);
+            Render.render();
+            return;
+          }
+
+          if (action === 'set-region') {
+            State.setRegion(value);
+            Render.render();
+            return;
+          }
+
+          if (action === 'set-okrug') {
+            State.setOkrug(value);
+            Render.render();
+            return;
+          }
+
+          if (action === 'set-district') {
+            State.setDistrict(value);
+            Render.render();
+            return;
+          }
+
+          if (action === 'toggle-param') {
+            State.toggleParam(
+              event.currentTarget.getAttribute('data-group'),
+              value,
+              event.currentTarget.getAttribute('data-mode')
+            );
+            Render.render();
+            return;
+          }
+
+          if (action === 'go-page') {
+            State.ui.currentPage = parseInt(value, 10);
+            Render.render();
+            return;
+          }
+
+          if (action === 'open-unit') {
+            window.open(event.currentTarget.getAttribute('data-url'), '_blank');
+            return;
+          }
+
+          if (action === 'reset') {
+            State.clearAll();
+            Render.render();
+          }
+        });
+      });
     }
   };
-
-  // ==========================================================================
-  // RENDER — ОТРИСОВКА UI
-  // ==========================================================================
-
-  const Render = {
-    renderCard(unit) {
-      const developerBadgeColors = {
-        pik: '#E63946',
-        samolet: '#1D3557',
-        lsr: '#2A9D8F',
-        mrgroup: '#7209B7',
-        fsk: '#F77F00',
-        a101: '#023E8A',
-        brusnika: '#800F2F',
-        donstroy: '#343A40',
-        ingrad: '#06AED5',
-        other: '#6C757D'
-      };
-
-      const typeLabels = {
-        psn: 'ПСН',
-        office: 'Офис',
-        gab_ready: 'ГАБ',
-        gab_franchise: 'ГАБ франшиза',
-        retail: 'Торговое',
-        warehouse: 'Склад'
-      };
-
-      const badgeColor = developerBadgeColors[unit.developer] || '#6C757D';
-      const typeLabel = typeLabels[unit.type] || unit.type;
-
-      return `
-        <div class="psnhub-card" data-unit-id="${unit.id}" onclick="PSNHUB.goToUnit('${unit.id}')">
-          <div class="psnhub-card__image">
-            ${unit.plan_image ? `<img src="${unit.plan_image}" alt="${unit.jk}" loading="lazy">` : '<div class="psnhub-card__placeholder">Фото</div>'}
-          </div>
-          <div class="psnhub-card__badge" style="background: ${badgeColor}">
-            ${unit.developer_name || unit.developer.toUpperCase()} ${unit.jk ? `| ${unit.jk}` : ''}
-          </div>
-          <div class="psnhub-card__type">
-            ${typeLabel} • ${Utils.formatArea(unit.area)}${unit.floor ? ` • ${unit.floor} этаж` : ''}
-          </div>
-          <div class="psnhub-card__price">
-            ${Utils.formatPrice(unit.price)}
-          </div>
-          ${unit.price_per_sqm ? `<div class="psnhub-card__price-sqm">${Utils.formatPricePerSqm(unit.price_per_sqm)}</div>` : ''}
-          <div class="psnhub-card__location">
-            <div>${unit.city_name || (unit.city === 'moscow' ? 'Москва' : 'МО')}</div>
-            ${unit.metro ? `<div class="psnhub-card__metro">M ${unit.metro}${unit.metro_time ? ` • ${unit.metro_time} мин` : ''}</div>` : ''}
-          </div>
-          ${unit.roi ? `
-            <div class="psnhub-card__roi">
-              <span class="psnhub-card__roi-label">Доходность:</span>
-              <span class="psnhub-card__roi-value">${unit.roi}% годовых</span>
-            </div>
-          ` : ''}
-          ${unit.payback_years ? `
-            <div class="psnhub-card__payback">Окупаемость: ${unit.payback_years} лет</div>
-          ` : ''}
-        </div>
-      `;
-    },
-
-    renderList(units, page = 1) {
-      const container = document.getElementById('psnhub-catalog');
-      if (!container) {
-        Utils.error('Catalog container not found');
-        return;
-      }
-
-      if (units.length === 0) {
-        container.innerHTML = `
-          <div class="psnhub-empty">
-            <div class="psnhub-empty__icon">🔍</div>
-            <div class="psnhub-empty__title">Объекты не найдены</div>
-            <div class="psnhub-empty__text">Попробуйте изменить фильтры</div>
-            <button class="psnhub-btn psnhub-btn--secondary" onclick="PSNHUB.State.clearFilters(); PSNHUB.render();">
-              Сбросить фильтры
-            </button>
-          </div>
-        `;
-        return;
-      }
-
-      const start = (page - 1) * CONFIG.ITEMS_PER_PAGE;
-      const end = start + CONFIG.ITEMS_PER_PAGE;
-      const pageUnits = units.slice(start, end);
-
-      const html = pageUnits.map(u => this.renderCard(u)).join('');
-      container.innerHTML = `<div class="psnhub-grid">${html}</div>`;
-
-      // Pagination
-      if (units.length > CONFIG.ITEMS_PER_PAGE) {
-        this.renderPagination(units.length, page);
-      }
-
-      // Scroll to top
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    },
-
-    renderPagination(totalUnits, currentPage) {
-      const container = document.getElementById('psnhub-pagination');
-      if (!container) return;
-
-      const totalPages = Math.ceil(totalUnits / CONFIG.ITEMS_PER_PAGE);
-      if (totalPages <= 1) {
-        container.innerHTML = '';
-        return;
-      }
-
-      let html = '<div class="psnhub-pagination">';
-      
-      // Previous
-      if (currentPage > 1) {
-        html += `<button class="psnhub-pagination__btn" onclick="PSNHUB.goToPage(${currentPage - 1})">←</button>`;
-      }
-
-      // Pages
-      for (let i = 1; i <= totalPages; i++) {
-        if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
-          const active = i === currentPage ? 'psnhub-pagination__btn--active' : '';
-          html += `<button class="psnhub-pagination__btn ${active}" onclick="PSNHUB.goToPage(${i})">${i}</button>`;
-        } else if (i === currentPage - 3 || i === currentPage + 3) {
-          html += '<span class="psnhub-pagination__dots">...</span>';
-        }
-      }
-
-      // Next
-      if (currentPage < totalPages) {
-        html += `<button class="psnhub-pagination__btn" onclick="PSNHUB.goToPage(${currentPage + 1})">→</button>`;
-      }
-
-      html += '</div>';
-      container.innerHTML = html;
-    },
-
-    renderKPI(units) {
-      const container = document.getElementById('psnhub-kpi');
-      if (!container) return;
-
-      container.innerHTML = `
-        <div class="psnhub-kpi">
-          <div class="psnhub-kpi__item">
-            <div class="psnhub-kpi__value">${units.length}</div>
-            <div class="psnhub-kpi__label">Найдено объектов</div>
-          </div>
-        </div>
-      `;
-    },
-
-    renderFilters(facets, currentFilters) {
-      // TODO: Implement filter UI rendering
-      // This will be done in next step
-      Utils.log('Render filters:', facets);
-    },
-
-    showLoader() {
-      const loader = document.getElementById('psnhub-loader');
-      if (loader) loader.style.display = 'flex';
-    },
-
-    hideLoader() {
-      const loader = document.getElementById('psnhub-loader');
-      if (loader) loader.style.display = 'none';
-    }
-  };
-
-  // ==========================================================================
-  // ГЛАВНЫЙ КЛАСС PSNHUB
-  // ==========================================================================
 
   window.PSNHUB = {
-    State,
-    Loader,
-    Selectors,
-    Metrics,
-    Render,
-    Utils,
+    init: function(preset) {
+      State.ui = createDefaultState();
+      State.loadFromURL();
 
-    async init(preset = {}) {
-      try {
-        Utils.log('PSNHUB initializing...', preset);
-        Render.showLoader();
+      var adaptedPreset = Selectors.adaptLegacyPreset(preset || window.PAGE_PRESET || null);
+      if (!State.ui.entrance && adaptedPreset.entrance) State.ui.entrance = adaptedPreset.entrance;
+      if (!State.ui.scenario && adaptedPreset.scenario) State.ui.scenario = adaptedPreset.scenario;
+      if (!State.ui.geo.region && adaptedPreset.geo.region) State.ui.geo.region = adaptedPreset.geo.region;
 
-        // 1. Инициализируем состояние
-        State.init(preset);
-
-        // 2. Загружаем manifest
-        const manifest = await Loader.loadManifest();
-        Utils.log('Manifest loaded:', manifest);
-
-        // 3. Загружаем facets
-        State.facets = await Loader.loadFacets();
-        Utils.log('Facets loaded:', State.facets);
-
-        // 4. Загружаем KPI
-        State.kpi = await Loader.loadKPI();
-        Utils.log('KPI loaded:', State.kpi);
-
-        // 5. Загружаем данные
-        const units = await Loader.loadFilteredChunks(manifest, preset);
-        Utils.log(`Loaded ${units.length} units`);
-
-        // 6. Обогащаем метриками
-        State.units = Metrics.enrichAllUnits(units);
-        Utils.log('Units enriched with metrics');
-
-        // 7. Рендерим
-        this.render();
-
-        Render.hideLoader();
-        Utils.log('PSNHUB initialized successfully');
-
-      } catch (error) {
-        Utils.error('Initialization failed:', error);
-        Render.hideLoader();
-        alert('Ошибка загрузки данных. Пожалуйста, обновите страницу.');
-      }
-    },
-
-    render() {
-      Utils.log('Rendering with filters:', State.filters);
-
-      // 1. Применяем фильтры
-      State.filteredUnits = Selectors.applyFilters(State.units, State.filters);
-
-      // 2. Сортируем
-      State.filteredUnits = Selectors.sortUnits(State.filteredUnits, State.filters.sort || 'price_asc');
-
-      // 3. Рендерим список
-      Render.renderList(State.filteredUnits, State.currentPage);
-
-      // 4. Рендерим KPI
-      Render.renderKPI(State.filteredUnits);
-
-      // 5. Обновляем фильтры (динамические facets)
-      const dynamicFacets = Selectors.computeDynamicFacets(State.filteredUnits);
-      Render.renderFilters(dynamicFacets, State.filters);
-    },
-
-    setFilter(key, value) {
-      State.setFilter(key, value);
-      this.render();
-    },
-
-    toggleFilter(key, value) {
-      State.toggleFilter(key, value);
-      this.render();
-    },
-
-    clearFilters() {
-      State.clearFilters();
-      this.render();
-    },
-
-    goToPage(page) {
-      State.currentPage = page;
-      this.render();
-    },
-
-    goToUnit(unitId) {
-      // TODO: Navigate to unit detail page
-      Utils.log('Go to unit:', unitId);
-      const unit = State.units.find(u => u.id === unitId);
-      if (unit && unit.url) {
-        window.open(unit.url, '_blank');
-      }
+      Loader.loadUnits().then(function(units) {
+        State.rawUnits = units;
+        State.units = units.map(function(unit) { return Mapper.mapUnit(unit); });
+        Render.render();
+      }).catch(function(error) {
+        console.error('[DomRadar] init failed', error);
+        var host = Render.mountRoot();
+        host.innerHTML = '<div class="domradar-shell"><div class="domradar-empty"><div class="domradar-empty__title">Ошибка загрузки данных</div><div class="domradar-empty__text">Тестовая версия не смогла получить JSON из GitHub CDN.</div></div></div>';
+      });
     }
   };
 
-  // Auto-init if PAGE_PRESET is defined
-  if (window.PAGE_PRESET) {
-    document.addEventListener('DOMContentLoaded', () => {
-      PSNHUB.init(window.PAGE_PRESET);
-    });
-  }
-
+  document.addEventListener('DOMContentLoaded', function() {
+    window.PSNHUB.init(window.PAGE_PRESET || null);
+  });
 })();
