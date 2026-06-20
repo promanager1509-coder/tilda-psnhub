@@ -1,21 +1,36 @@
 {
-  "version": "2026-02-20T15:38:51.868524",
-  "total_units": 1378,
+  "version": "2026-06-20T16:10:00.000000",
+  "total_units": 554,
   "chunks": [
     {
       "file": "chunks/units_0001.json",
-      "count": 500,
+      "count": 100,
       "hash": "b7f37fc92e66865b1f6d87fa55feb841"
     },
     {
       "file": "chunks/units_0002.json",
-      "count": 500,
+      "count": 100,
       "hash": "6973de9c12999f2934a517e47402933b"
     },
     {
       "file": "chunks/units_0003.json",
-      "count": 378,
+      "count": 100,
       "hash": "e52df2aabe89cc42aee24ba93c22e442"
+    },
+    {
+      "file": "chunks/units_0004.json",
+      "count": 100,
+      "hash": ""
+    },
+    {
+      "file": "chunks/units_0005.json",
+      "count": 100,
+      "hash": ""
+    },
+    {
+      "file": "chunks/units_0006.json",
+      "count": 54,
+      "hash": ""
     }
   ],
   "facets_file": "facets.json",

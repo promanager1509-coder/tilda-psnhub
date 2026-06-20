@@ -1,372 +1,424 @@
 /**
- * PSNHUB STYLES v1.0.0
- * Стили для каталога коммерческой недвижимости
+ * PSNHUB / ДомРадар live transition styles for Tilda.
  */
 
-/* ==========================================================================
-   ПЕРЕМЕННЫЕ
-   ========================================================================== */
-
 :root {
-  --psnhub-primary: #10b981;
-  --psnhub-primary-dark: #059669;
-  --psnhub-secondary: #3b82f6;
-  --psnhub-danger: #ef4444;
-  --psnhub-warning: #f59e0b;
-  --psnhub-dark: #1e293b;
-  --psnhub-light: #f8fafc;
-  --psnhub-border: #e2e8f0;
-  --psnhub-text: #334155;
-  --psnhub-text-light: #64748b;
-  
-  --psnhub-radius: 12px;
-  --psnhub-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
-  --psnhub-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+  --domradar-bg: #f7f5f0;
+  --domradar-bg-soft: #fbfaf7;
+  --domradar-surface: #ffffff;
+  --domradar-border: rgba(31, 30, 27, 0.08);
+  --domradar-text: #1f1e1b;
+  --domradar-text-muted: #6b6a64;
+  --domradar-accent: #0f6e56;
+  --domradar-accent-strong: #0b5744;
+  --domradar-accent-contrast: #f5fbf8;
+  --domradar-radius-sm: 10px;
+  --domradar-radius-md: 16px;
+  --domradar-radius-lg: 24px;
+  --domradar-shadow-sm: 0 1px 2px rgba(31, 30, 27, 0.05);
+  --domradar-shadow-md: 0 12px 30px rgba(31, 30, 27, 0.08);
+  --domradar-shadow-lg: 0 22px 50px rgba(31, 30, 27, 0.12);
 }
 
-/* Тёмная тема для брокеров */
-.psnhub-theme-dark {
-  --psnhub-dark: #f8fafc;
-  --psnhub-light: #1e293b;
-  --psnhub-border: #334155;
-  --psnhub-text: #f1f5f9;
-  --psnhub-text-light: #cbd5e1;
-  background: #0f172a;
-  color: var(--psnhub-text);
+#psnhub-catalog.domradar-app {
+  background:
+    radial-gradient(circle at top right, rgba(15, 110, 86, 0.06), transparent 28%),
+    linear-gradient(180deg, var(--domradar-bg-soft) 0%, var(--domradar-bg) 100%);
+  color: var(--domradar-text);
+  padding: 32px 0 56px;
+  font-family: "Segoe UI", Arial, sans-serif;
 }
 
-/* ==========================================================================
-   GRID — СЕТКА КАРТОЧЕК
-   ========================================================================== */
-
-.psnhub-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 24px;
-  margin: 0 0 40px 0;
+.domradar-shell {
+  width: min(1240px, calc(100% - 32px));
+  margin: 0 auto;
 }
 
-@media (max-width: 768px) {
-  .psnhub-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 16px;
-  }
+.domradar-hero {
+  margin-bottom: 28px;
+  padding: 28px;
+  border: 1px solid var(--domradar-border);
+  border-radius: var(--domradar-radius-lg);
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(10px);
+  box-shadow: var(--domradar-shadow-sm);
 }
 
-@media (max-width: 480px) {
-  .psnhub-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-/* ==========================================================================
-   CARD — КАРТОЧКА ОБЪЕКТА
-   ========================================================================== */
-
-.psnhub-card {
-  background: #fff;
-  border-radius: var(--psnhub-radius);
-  overflow: hidden;
-  box-shadow: var(--psnhub-shadow);
-  transition: all 0.3s ease;
-  cursor: pointer;
-  position: relative;
-}
-
-.psnhub-card:hover {
-  box-shadow: var(--psnhub-shadow-lg);
-  transform: translateY(-4px);
-}
-
-.psnhub-card__image {
-  width: 100%;
-  height: 180px;
-  background: #f1f5f9;
-  overflow: hidden;
-  position: relative;
-}
-
-.psnhub-card__image img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.psnhub-card__placeholder {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #94a3b8;
-  font-size: 14px;
-  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
-}
-
-.psnhub-card__badge {
-  background: var(--psnhub-primary);
-  color: #fff;
-  padding: 6px 12px;
+.domradar-hero__eyebrow {
+  margin-bottom: 10px;
+  color: var(--domradar-accent);
   font-size: 12px;
-  font-weight: 600;
-  margin: 12px 12px 8px 12px;
-  border-radius: 6px;
-  display: inline-block;
-  max-width: calc(100% - 24px);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.psnhub-card__type {
-  padding: 0 16px;
-  font-size: 13px;
-  color: var(--psnhub-text-light);
-  margin-bottom: 8px;
-}
-
-.psnhub-card__price {
-  padding: 0 16px;
-  font-size: 20px;
   font-weight: 700;
-  color: var(--psnhub-primary);
-  margin-bottom: 4px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
-.psnhub-card__price-sqm {
-  padding: 0 16px;
-  font-size: 13px;
-  color: var(--psnhub-text-light);
-  margin-bottom: 12px;
+.domradar-hero__title {
+  margin: 0 0 12px;
+  font-size: clamp(28px, 4vw, 52px);
+  line-height: 1.02;
+  letter-spacing: -0.04em;
 }
 
-.psnhub-card__location {
-  padding: 0 16px 12px 16px;
-  font-size: 14px;
-  color: var(--psnhub-text);
+.domradar-hero__text {
+  max-width: 760px;
+  margin: 0 0 18px;
+  color: var(--domradar-text-muted);
+  font-size: 16px;
+  line-height: 1.55;
 }
 
-.psnhub-card__metro {
-  color: var(--psnhub-text-light);
-  font-size: 13px;
-  margin-top: 4px;
-}
-
-.psnhub-card__roi {
-  background: #ecfdf5;
-  padding: 8px 16px;
-  display: flex;
-  justify-content: space-between;
+.domradar-hero__status {
+  display: inline-flex;
   align-items: center;
-  border-top: 1px solid var(--psnhub-border);
+  min-height: 44px;
+  margin: 0 0 18px;
+  padding: 10px 16px;
+  border: 1px solid rgba(15, 110, 86, 0.16);
+  border-radius: 16px;
+  background: rgba(15, 110, 86, 0.08);
+  color: var(--domradar-text);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.45;
 }
 
-.psnhub-card__roi-label {
-  font-size: 13px;
-  color: var(--psnhub-text-light);
-}
-
-.psnhub-card__roi-value {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--psnhub-primary);
-}
-
-.psnhub-card__payback {
-  padding: 8px 16px;
-  font-size: 13px;
-  color: var(--psnhub-text-light);
-  border-top: 1px solid var(--psnhub-border);
-}
-
-/* ==========================================================================
-   KPI — ПОКАЗАТЕЛИ
-   ========================================================================== */
-
-.psnhub-kpi {
+.domradar-hero__meta {
   display: flex;
-  gap: 24px;
-  margin: 0 0 32px 0;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.domradar-step,
+.domradar-reset {
+  min-height: 42px;
+  border-radius: 999px;
+  padding: 0 16px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.domradar-step {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(15, 110, 86, 0.08);
+  color: var(--domradar-accent);
+}
+
+.domradar-reset {
+  border: 1px solid var(--domradar-border);
+  background: var(--domradar-surface);
+  color: var(--domradar-text);
+  cursor: pointer;
+}
+
+.domradar-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.domradar-summary-pill,
+.domradar-summary-empty {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 13px;
+}
+
+.domradar-summary-pill {
+  background: rgba(31, 30, 27, 0.06);
+}
+
+.domradar-summary-empty {
+  color: var(--domradar-text-muted);
+  background: rgba(31, 30, 27, 0.04);
+}
+
+.domradar-kpi {
+  display: flex;
+  gap: 12px;
   flex-wrap: wrap;
 }
 
-.psnhub-kpi__item {
-  background: #fff;
-  padding: 20px 28px;
-  border-radius: var(--psnhub-radius);
-  box-shadow: var(--psnhub-shadow);
-  min-width: 200px;
+.domradar-kpi__item {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  min-width: 180px;
+  padding: 18px 20px;
+  border: 1px solid var(--domradar-border);
+  border-radius: var(--domradar-radius-md);
+  background: var(--domradar-surface);
 }
 
-.psnhub-kpi__value {
-  font-size: 32px;
-  font-weight: 700;
-  color: var(--psnhub-primary);
-  margin-bottom: 4px;
+.domradar-kpi__value {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--domradar-accent);
 }
 
-.psnhub-kpi__label {
+.domradar-kpi__label {
+  color: var(--domradar-text-muted);
+  font-size: 13px;
+}
+
+.domradar-section {
+  margin-bottom: 22px;
+  padding: 24px;
+  border: 1px solid var(--domradar-border);
+  border-radius: var(--domradar-radius-lg);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: var(--domradar-shadow-sm);
+}
+
+.domradar-section__head {
+  margin-bottom: 16px;
+}
+
+.domradar-section__head h2 {
+  margin: 0 0 6px;
+  font-size: 22px;
+  line-height: 1.1;
+}
+
+.domradar-section__head p {
+  margin: 0;
+  color: var(--domradar-text-muted);
   font-size: 14px;
-  color: var(--psnhub-text-light);
 }
 
-/* ==========================================================================
-   PAGINATION — ПАГИНАЦИЯ
-   ========================================================================== */
+.domradar-cards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
 
-.psnhub-pagination {
+.domradar-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 150px;
+  padding: 20px;
+  border: 1px solid var(--domradar-border);
+  border-radius: var(--domradar-radius-md);
+  background: linear-gradient(180deg, rgba(255,255,255,0.95) 0%, rgba(247,245,240,0.95) 100%);
+  text-align: left;
+  cursor: pointer;
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+}
+
+.domradar-card:hover,
+.domradar-chip:hover,
+.domradar-page:hover,
+.domradar-open-link:hover,
+.domradar-reset:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--domradar-shadow-md);
+}
+
+.domradar-card.is-active {
+  border-color: rgba(15, 110, 86, 0.35);
+  background: linear-gradient(180deg, rgba(15,110,86,0.1) 0%, rgba(255,255,255,0.98) 100%);
+}
+
+.domradar-card__title {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.domradar-card__text {
+  color: var(--domradar-text-muted);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.domradar-geo,
+.domradar-param-groups {
+  display: grid;
+  gap: 16px;
+}
+
+.domradar-geo__group,
+.domradar-param-group {
+  display: grid;
+  gap: 10px;
+}
+
+.domradar-geo__label,
+.domradar-param-group__title {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--domradar-text-muted);
+}
+
+.domradar-chips {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.domradar-chip,
+.domradar-page,
+.domradar-open-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 16px;
+  border: 1px solid var(--domradar-border);
+  border-radius: 999px;
+  background: var(--domradar-surface);
+  color: var(--domradar-text);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease, background-color 160ms ease, color 160ms ease;
+}
+
+.domradar-chip.is-active,
+.domradar-page.is-active {
+  border-color: var(--domradar-accent);
+  background: var(--domradar-accent);
+  color: var(--domradar-accent-contrast);
+}
+
+.domradar-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.domradar-result-card {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid var(--domradar-border);
+  border-radius: var(--domradar-radius-md);
+  background: var(--domradar-surface);
+  box-shadow: var(--domradar-shadow-sm);
+}
+
+.domradar-result-card__meta {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.domradar-mini-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(15, 110, 86, 0.08);
+  color: var(--domradar-accent);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.domradar-result-card__title {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.15;
+}
+
+.domradar-result-card__price {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.domradar-result-card__subprice,
+.domradar-result-card__location,
+.domradar-result-card__address,
+.domradar-result-card__developer {
+  color: var(--domradar-text-muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.domradar-result-card__footer {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  padding-top: 8px;
+  border-top: 1px solid var(--domradar-border);
+}
+
+.domradar-open-link {
+  background: var(--domradar-accent);
+  border-color: var(--domradar-accent);
+  color: var(--domradar-accent-contrast);
+}
+
+.domradar-empty {
+  display: grid;
+  gap: 8px;
+  padding: 24px;
+  border: 1px dashed rgba(31, 30, 27, 0.18);
+  border-radius: var(--domradar-radius-md);
+  background: rgba(247, 245, 240, 0.55);
+}
+
+.domradar-empty__title {
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.domradar-empty__text {
+  color: var(--domradar-text-muted);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.domradar-pagination {
   display: flex;
   gap: 8px;
   justify-content: center;
-  align-items: center;
-  margin: 32px 0;
+  flex-wrap: wrap;
+  margin-top: 18px;
 }
 
-.psnhub-pagination__btn {
-  padding: 10px 16px;
-  border: 1px solid var(--psnhub-border);
-  background: #fff;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--psnhub-text);
-  transition: all 0.2s ease;
-}
-
-.psnhub-pagination__btn:hover {
-  background: var(--psnhub-light);
-  border-color: var(--psnhub-primary);
-}
-
-.psnhub-pagination__btn--active {
-  background: var(--psnhub-primary);
-  color: #fff;
-  border-color: var(--psnhub-primary);
-}
-
-.psnhub-pagination__dots {
-  padding: 0 8px;
-  color: var(--psnhub-text-light);
-}
-
-/* ==========================================================================
-   EMPTY STATE — ПУСТОЕ СОСТОЯНИЕ
-   ========================================================================== */
-
-.psnhub-empty {
-  text-align: center;
-  padding: 80px 20px;
-}
-
-.psnhub-empty__icon {
-  font-size: 64px;
-  margin-bottom: 16px;
-  opacity: 0.5;
-}
-
-.psnhub-empty__title {
-  font-size: 24px;
-  font-weight: 600;
-  color: var(--psnhub-text);
-  margin-bottom: 8px;
-}
-
-.psnhub-empty__text {
-  font-size: 16px;
-  color: var(--psnhub-text-light);
-  margin-bottom: 24px;
-}
-
-/* ==========================================================================
-   LOADER — ЗАГРУЗЧИК
-   ========================================================================== */
-
-#psnhub-loader {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(255, 255, 255, 0.95);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-}
-
-#psnhub-loader::after {
-  content: '';
-  width: 48px;
-  height: 48px;
-  border: 4px solid var(--psnhub-border);
-  border-top-color: var(--psnhub-primary);
-  border-radius: 50%;
-  animation: psnhub-spin 0.8s linear infinite;
-}
-
-@keyframes psnhub-spin {
-  to { transform: rotate(360deg); }
-}
-
-/* ==========================================================================
-   BUTTONS — КНОПКИ
-   ========================================================================== */
-
-.psnhub-btn {
-  padding: 12px 24px;
-  border-radius: 8px;
-  font-size: 15px;
-  font-weight: 600;
-  cursor: pointer;
-  border: none;
-  transition: all 0.2s ease;
-  display: inline-block;
-}
-
-.psnhub-btn--primary {
-  background: var(--psnhub-primary);
-  color: #fff;
-}
-
-.psnhub-btn--primary:hover {
-  background: var(--psnhub-primary-dark);
-}
-
-.psnhub-btn--secondary {
-  background: #fff;
-  color: var(--psnhub-text);
-  border: 1px solid var(--psnhub-border);
-}
-
-.psnhub-btn--secondary:hover {
-  background: var(--psnhub-light);
-}
-
-/* ==========================================================================
-   RESPONSIVE — АДАПТИВ
-   ========================================================================== */
-
-@media (max-width: 768px) {
-  .psnhub-card__price {
-    font-size: 18px;
+@media (max-width: 1100px) {
+  .domradar-cards,
+  .domradar-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  
-  .psnhub-card__image {
-    height: 140px;
+}
+
+@media (max-width: 760px) {
+  #psnhub-catalog.domradar-app {
+    padding: 20px 0 40px;
   }
-  
-  .psnhub-kpi {
-    gap: 12px;
+
+  .domradar-shell {
+    width: min(100%, calc(100% - 20px));
   }
-  
-  .psnhub-kpi__item {
-    padding: 16px 20px;
-    min-width: auto;
-    flex: 1;
+
+  .domradar-hero,
+  .domradar-section {
+    padding: 18px;
+    border-radius: 18px;
   }
-  
-  .psnhub-kpi__value {
+
+  .domradar-cards,
+  .domradar-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .domradar-result-card__price {
     font-size: 24px;
   }
 }
