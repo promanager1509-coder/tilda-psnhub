@@ -192,7 +192,7 @@
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
+        .replace(/\"/g, '&quot;')
         .replace(/'/g, '&#39;');
     }
   };
@@ -604,9 +604,10 @@
 
       return [
         '<section class="domradar-hero">',
-        '<div class="domradar-hero__eyebrow">ДомРадар / тестовая живая сборка</div>',
+        '<div class="domradar-hero__eyebrow">ДомРадар / живая база коммерции</div>',
         '<h1 class="domradar-hero__title">Маршрут по коммерческой недвижимости без текстового поиска</h1>',
-        '<p class="domradar-hero__text">Выберите вход, сценарий, географию и критичные параметры. Сайт уже работает на живых данных текущего репозитория.</p>',
+        '<p class="domradar-hero__text">Выберите вход, сценарий, географию и критичные параметры. Внешний слой сайта управляется через GitHub и автоматически подхватывается страницами Tilda.</p>',
+        '<div class="domradar-hero__status">+100 объектов от застройщиков ежедневно. Запущен раздел ГАБ и аренды ПСН — объекты обновлены 20.06.2026</div>',
         '<div class="domradar-hero__meta">',
         '<div class="domradar-step">Шаг ' + step + ' из 5</div>',
         '<button class="domradar-reset" data-action="reset">Сбросить маршрут</button>',
