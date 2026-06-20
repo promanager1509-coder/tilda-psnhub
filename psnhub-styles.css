@@ -68,6 +68,21 @@
   line-height: 1.55;
 }
 
+.domradar-hero__status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin: 0 0 18px;
+  padding: 10px 16px;
+  border: 1px solid rgba(15, 110, 86, 0.16);
+  border-radius: 16px;
+  background: rgba(15, 110, 86, 0.08);
+  color: var(--domradar-text);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
 .domradar-hero__meta {
   display: flex;
   gap: 12px;
